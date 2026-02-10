@@ -9,6 +9,9 @@ A Linux CLI program that searches DuckDuckGo and StartPage concurrently using as
 - Rate limiting and timeout protection
 - Clean command-line interface with argparse
 - Beautiful Soup for HTML parsing
+- Connection timeout: 10 seconds per search
+- Total timeout: 30 seconds for all searches
+- Graceful error handling with informative messages
 
 ## Requirements
 
@@ -53,25 +56,7 @@ python3 searchdash.py -s'async await tutorial'
 python3 searchdash.py -s'web-scraping'
 ```
 
-## Features
-
-### Rate Limiting
-The tool includes basic rate limiting to avoid overwhelming search engines. Each search engine has a configurable rate limit (default 1.0 second).
-
-### Robustness
-- Connection timeout: 10 seconds per search
-- Total timeout: 30 seconds for all searches
-- Automatic retry on transient network errors
-- Graceful error handling with informative messages
-
-### Output Format
-Results are displayed with:
-- Search engine source
-- Result title
-- URL
-- Text snippet (when available)
-
-## Development
+## Implementation Details
 
 The codebase is structured with:
 - `SearchEngine` base class for extensibility

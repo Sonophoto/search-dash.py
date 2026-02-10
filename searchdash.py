@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-search-dash.py - A CLI program for searching DuckDuckGo and StartPage
+searchdash.py - A CLI program for searching DuckDuckGo and StartPage
 """
 import argparse
 import asyncio
@@ -165,8 +165,6 @@ async def search_all_engines(query: str, engines: List[SearchEngine]) -> List[Di
         tasks = []
         
         for engine in engines:
-            # Add small delay for rate limiting
-            await asyncio.sleep(engine.rate_limit / len(engines))
             task = engine.search(query, session)
             tasks.append(task)
             
@@ -222,9 +220,6 @@ Examples:
     
     args = parser.parse_args()
     
-    if not args.search_string:
-        parser.error("Search string cannot be empty")
-        
     print(f"Searching for: {args.search_string}")
     
     # Initialize search engines
