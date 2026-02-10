@@ -64,6 +64,22 @@ python3 searchdash.py -s'web-scraping'
 If the search string has **no** dashes, a single search is performed with the
 original string (no substitution).
 
+### Pass-Through Search (no substitution)
+
+The `search` module skips all dash substitution and searches with the exact
+string you provide, even if it contains dashes.  Use it when you want a single
+search with the literal search string:
+
+```bash
+python3 searchdash.py -s'full search string' -m search
+```
+
+For example, to search for "web-scraping" as-is (without expanding dashes):
+
+```bash
+python3 searchdash.py -s'web-scraping' -m search
+```
+
 ### Using a Different Module
 
 The `-m` flag lets you specify an alternative substitution module:
@@ -91,6 +107,9 @@ python3 searchdash.py -s'web-scraping'
 
 # Limit results per engine
 python3 searchdash.py -s'web-scraping' -n 5
+
+# Pass-through search (no substitution, even with dashes)
+python3 searchdash.py -s'web-scraping' -m search
 ```
 
 ## Implementation Details
@@ -99,6 +118,7 @@ The codebase is structured with:
 - `SearchEngine` base class for extensibility
 - Individual search engine implementations (`DuckDuckGoSearch`, `StartPageSearch`)
 - `dashsub.py` — default substitution module (replaces `-` with a–z)
+- `search.py` — pass-through module (searches with the original string unchanged)
 - Pluggable module system via `-m` flag and `importlib`
 - Async search orchestration with `run_search_pipeline()`
 - Clean separation of concerns: string processing → search → output
