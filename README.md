@@ -1,5 +1,7 @@
 # search-dash.py
 
+[![CI](https://github.com/Sonophoto/search-dash.py/actions/workflows/ci.yml/badge.svg)](https://github.com/Sonophoto/search-dash.py/actions/workflows/ci.yml)
+
 A Linux CLI program that searches DuckDuckGo and StartPage for a word with a metacharacter substitution.
 
 ## Features
