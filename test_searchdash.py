@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from searchdash import (
+    DEFAULT_MAX_RESULTS_PER_ENGINE,
     DuckDuckGoSearch,
-    MAX_RESULTS_PER_ENGINE,
     SearchEngine,
     StartPageSearch,
     print_engine_results,
@@ -77,7 +77,7 @@ async def test_search_single_engine_caps_at_max():
     engine = FakeEngine("BigEngine", result_count=30)
     session = MagicMock()
     results = await search_single_engine(SEARCH_TERM, engine, session)
-    assert len(results) == MAX_RESULTS_PER_ENGINE
+    assert len(results) == DEFAULT_MAX_RESULTS_PER_ENGINE
 
 
 async def test_search_single_engine_handles_failure():
@@ -86,6 +86,25 @@ async def test_search_single_engine_handles_failure():
     session = MagicMock()
     results = await search_single_engine(SEARCH_TERM, engine, session)
     assert results == []
+
+
+async def test_search_single_engine_custom_max_results():
+    """max_results parameter controls how many results are returned."""
+    engine = FakeEngine("TestEngine", result_count=15)
+    session = MagicMock()
+    results = await search_single_engine(SEARCH_TERM, engine, session, max_results=5)
+    assert len(results) == 5
+
+
+async def test_pipeline_caps_results_with_custom_max(capsys):
+    """Pipeline uses the provided max_results value."""
+    ddg = FakeEngine("DuckDuckGo", result_count=25)
+    sp = FakeEngine("StartPage", result_count=25)
+
+    await run_search_pipeline(SEARCH_TERM, engines=[ddg, sp], max_results=10)
+
+    out = capsys.readouterr().out
+    assert out.count("Found 10 results") == 2
 # ---------------------------------------------------------------------------
 # Tests for print_engine_results
 # ---------------------------------------------------------------------------
