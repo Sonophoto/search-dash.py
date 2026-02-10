@@ -154,21 +154,22 @@ class StartPageSearch(SearchEngine):
         return results
 
 
-MAX_RESULTS_PER_ENGINE = 20
+DEFAULT_MAX_RESULTS_PER_ENGINE = 20
 
 
 async def search_single_engine(
     query: str,
     engine: SearchEngine,
     session: aiohttp.ClientSession,
+    max_results: int = DEFAULT_MAX_RESULTS_PER_ENGINE,
 ) -> List[Dict[str, str]]:
-    """Search one engine and return at most MAX_RESULTS_PER_ENGINE results."""
+    """Search one engine and return at most *max_results* results."""
     try:
         results = await engine.search(query, session)
     except Exception as exc:
         print(f"Search failed ({engine.name}): {exc}", file=sys.stderr)
         results = []
-    return results[:MAX_RESULTS_PER_ENGINE]
+    return results[:max_results]
 
 
 def print_engine_results(engine_name: str, results: List[Dict[str, str]]):
@@ -188,12 +189,17 @@ def print_engine_results(engine_name: str, results: List[Dict[str, str]]):
     print()
 
 
-async def run_search_pipeline(query: str, engines: Optional[List[SearchEngine]] = None):
+async def run_search_pipeline(
+    query: str,
+    engines: Optional[List[SearchEngine]] = None,
+    max_results: int = DEFAULT_MAX_RESULTS_PER_ENGINE,
+):
     """Run the search pipeline for a single query string.
 
-    For each engine (in order): search, then print first 20 links to stdout.
-    This function isolates string processing from the caller so that future
-    iterative-substitution logic only needs to provide query strings.
+    For each engine (in order): search, then print first *max_results* links
+    to stdout.  This function isolates string processing from the caller so
+    that future iterative-substitution logic only needs to provide query
+    strings.
     """
     if engines is None:
         engines = [DuckDuckGoSearch(), StartPageSearch()]
@@ -203,7 +209,7 @@ async def run_search_pipeline(query: str, engines: Optional[List[SearchEngine]] 
 
     async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
         for engine in engines:
-            results = await search_single_engine(query, engine, session)
+            results = await search_single_engine(query, engine, session, max_results)
             print_engine_results(engine.name, results)
 
 
@@ -227,13 +233,21 @@ Examples:
         help='Search string (use single quotes)'
     )
 
+    parser.add_argument(
+        '-n',
+        dest='max_results',
+        type=int,
+        default=DEFAULT_MAX_RESULTS_PER_ENGINE,
+        help=f'Maximum results per engine (default: {DEFAULT_MAX_RESULTS_PER_ENGINE})'
+    )
+
     args = parser.parse_args()
 
     print(f"Searching for: {args.search_string}")
 
     # Run the search pipeline
     try:
-        asyncio.run(run_search_pipeline(args.search_string))
+        asyncio.run(run_search_pipeline(args.search_string, max_results=args.max_results))
     except KeyboardInterrupt:
         print("\nSearch interrupted by user", file=sys.stderr)
         sys.exit(1)
