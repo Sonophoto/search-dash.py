@@ -17,7 +17,7 @@ strategies.
 import string
 
 
-class DashSub:
+class Dashsub:
     """Iterative dash-to-letter substitution processor.
 
     Attributes:
