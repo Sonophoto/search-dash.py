@@ -40,7 +40,7 @@ pipeline for each variant.
 - **Plugin convention** – Any module can replace `dashsub` as long as it exposes a
   class whose name is the PascalCase version of the module name (e.g.
   `my_module` → `MyModule`) implementing `process(str) -> str` and
-  `is_done() -> bool`.
+  `is_done() -> bool`.  See **module.md** for the full interface specification.
 
 - **test_searchdash.py** – pytest test suite (13 tests) using mocks; no real
   network calls. Uses `pytest-asyncio` with `asyncio_mode = "auto"`.
