@@ -1,6 +1,6 @@
 # search-dash.py
 
-A Linux CLI program that searches DuckDuckGo and StartPage concurrently using async/await.
+A Linux CLI program that searches DuckDuckGo and StartPage for a word with a metacharacter substituion.
 
 ## Features
 
