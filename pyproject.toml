@@ -1,0 +1,21 @@
+[project]
+name = "search-dash"
+version = "0.1.0"
+description = "Linux CLI program that searches on DuckDuckGo and StartPage"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "aiohttp>=3.8.0",
+    "beautifulsoup4>=4.9.0",
+    "uvloop>=0.17.0; platform_system != 'Windows'",
+]
+
+[project.scripts]
+searchdash = "searchdash:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = []
