@@ -1,5 +1,5 @@
 """
-dashsub.py - Default string-substitution module for search-dash.py
+dashsub.py - Default string-substitution module for searchdash.py
 
 This module replaces every '-' (dash) character in an input string with a
 letter of the English alphabet.  It is designed to be called repeatedly:
