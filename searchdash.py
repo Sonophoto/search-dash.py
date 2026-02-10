@@ -5,7 +5,7 @@ searchdash.py - A CLI program for searching DuckDuckGo and StartPage
 import argparse
 import asyncio
 import sys
-from typing import List, Dict
+from typing import List, Dict, Optional
 from urllib.parse import quote_plus
 
 try:
@@ -154,48 +154,57 @@ class StartPageSearch(SearchEngine):
         return results
 
 
-async def search_all_engines(query: str, engines: List[SearchEngine]) -> List[Dict[str, str]]:
-    """Search all engines concurrently with rate limiting"""
-    
-    # Create aiohttp session with connection pooling
-    connector = aiohttp.TCPConnector(limit=10, limit_per_host=2)
-    timeout = aiohttp.ClientTimeout(total=30)
-    
-    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-        tasks = []
-        
-        for engine in engines:
-            task = engine.search(query, session)
-            tasks.append(task)
-            
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Flatten results and filter out exceptions
-        all_results = []
-        for result in results:
-            if isinstance(result, Exception):
-                print(f"Search failed: {result}", file=sys.stderr)
-            elif isinstance(result, list):
-                all_results.extend(result)
-                
-        return all_results
+MAX_RESULTS_PER_ENGINE = 20
 
 
-def print_results(results: List[Dict[str, str]]):
-    """Print search results in a readable format"""
+async def search_single_engine(
+    query: str,
+    engine: SearchEngine,
+    session: aiohttp.ClientSession,
+) -> List[Dict[str, str]]:
+    """Search one engine and return at most MAX_RESULTS_PER_ENGINE results."""
+    try:
+        results = await engine.search(query, session)
+    except Exception as exc:
+        print(f"Search failed ({engine.name}): {exc}", file=sys.stderr)
+        results = []
+    return results[:MAX_RESULTS_PER_ENGINE]
+
+
+def print_engine_results(engine_name: str, results: List[Dict[str, str]]):
+    """Print results for a single engine to stdout."""
     if not results:
-        print("No results found.")
+        print(f"\n[{engine_name}] No results found.")
         return
-        
-    print(f"\nFound {len(results)} results:\n")
+
+    print(f"\n[{engine_name}] Found {len(results)} results:\n")
     print("=" * 80)
-    
+
     for i, result in enumerate(results, 1):
-        print(f"\n{i}. [{result['engine']}] {result['title']}")
+        print(f"\n{i}. {result['title']}")
         print(f"   URL: {result['url']}")
         if result.get('snippet'):
             print(f"   {result['snippet']}")
-        print()
+    print()
+
+
+async def run_search_pipeline(query: str, engines: Optional[List[SearchEngine]] = None):
+    """Run the search pipeline for a single query string.
+
+    For each engine (in order): search, then print first 20 links to stdout.
+    This function isolates string processing from the caller so that future
+    iterative-substitution logic only needs to provide query strings.
+    """
+    if engines is None:
+        engines = [DuckDuckGoSearch(), StartPageSearch()]
+
+    connector = aiohttp.TCPConnector(limit=10, limit_per_host=2)
+    timeout = aiohttp.ClientTimeout(total=30)
+
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+        for engine in engines:
+            results = await search_single_engine(query, engine, session)
+            print_engine_results(engine.name, results)
 
 
 def main():
@@ -209,7 +218,7 @@ Examples:
   python3 searchdash.py -s'python async programming'
         """
     )
-    
+
     parser.add_argument(
         '-s',
         dest='search_string',
@@ -217,21 +226,14 @@ Examples:
         required=True,
         help='Search string (use single quotes)'
     )
-    
+
     args = parser.parse_args()
-    
+
     print(f"Searching for: {args.search_string}")
-    
-    # Initialize search engines
-    engines = [
-        DuckDuckGoSearch(),
-        StartPageSearch()
-    ]
-    
-    # Run async search
+
+    # Run the search pipeline
     try:
-        results = asyncio.run(search_all_engines(args.search_string, engines))
-        print_results(results)
+        asyncio.run(run_search_pipeline(args.search_string))
     except KeyboardInterrupt:
         print("\nSearch interrupted by user", file=sys.stderr)
         sys.exit(1)
