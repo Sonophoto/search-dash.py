@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
 searchdash.py - A CLI program for searching DuckDuckGo and StartPage
+
+Supports iterative dash-substitution via pluggable modules.  The default
+module (dashsub) replaces every '-' in the search string with successive
+letters of the alphabet (a-z), running the search pipeline once per letter
+and quitting after 'z'.  A different module can be specified with the -m
+flag (future plugin support).
 """
 import argparse
 import asyncio
+import importlib
 import sys
 from typing import List, Dict, Optional
 from urllib.parse import quote_plus
@@ -214,7 +221,14 @@ async def run_search_pipeline(
 
 
 def main():
-    """Main entry point"""
+    """Main entry point.
+
+    When the search string contains '-' characters, the configured
+    substitution module (default: dashsub) is used to iteratively replace
+    them with successive letters.  Each iteration runs the full search
+    pipeline.  If there are no dashes, the search is performed once with
+    the original string.
+    """
     parser = argparse.ArgumentParser(
         description='Search DuckDuckGo and StartPage from the command line',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -222,6 +236,8 @@ def main():
 Examples:
   python3 searchdash.py -s'hello world'
   python3 searchdash.py -s'python async programming'
+  python3 searchdash.py -s'web-scraping'
+  python3 searchdash.py -s'web-scraping' -m dashsub
         """
     )
 
@@ -241,13 +257,54 @@ Examples:
         help=f'Maximum results per engine (default: {DEFAULT_MAX_RESULTS_PER_ENGINE})'
     )
 
+    parser.add_argument(
+        '-m',
+        dest='module',
+        type=str,
+        default='dashsub',
+        help='Substitution module to use (default: dashsub)'
+    )
+
     args = parser.parse_args()
 
-    print(f"Searching for: {args.search_string}")
+    # If no dashes in the input, run a single search and exit.
+    if '-' not in args.search_string:
+        print(f"Searching for: {args.search_string}")
+        try:
+            asyncio.run(run_search_pipeline(args.search_string, max_results=args.max_results))
+        except KeyboardInterrupt:
+            print("\nSearch interrupted by user", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"Search failed: {e}", file=sys.stderr)
+            sys.exit(1)
+        return
 
-    # Run the search pipeline
+    # Dynamically load the substitution module and instantiate its processor.
+    # The module must expose a class whose name is the module name in PascalCase
+    # (e.g. dashsub -> DashSub) with process(str)->str and is_done()->bool.
     try:
-        asyncio.run(run_search_pipeline(args.search_string, max_results=args.max_results))
+        mod = importlib.import_module(args.module)
+    except ModuleNotFoundError:
+        print(f"Error: substitution module '{args.module}' not found.", file=sys.stderr)
+        sys.exit(1)
+
+    # Derive class name from module name: dashsub -> DashSub
+    class_name = ''.join(part.capitalize() for part in args.module.split('_'))
+    try:
+        processor_cls = getattr(mod, class_name)
+    except AttributeError:
+        print(f"Error: module '{args.module}' has no class '{class_name}'.", file=sys.stderr)
+        sys.exit(1)
+
+    processor = processor_cls()
+
+    # Iterative substitution loop: run the pipeline once per letter until done.
+    try:
+        while not processor.is_done():
+            query = processor.process(args.search_string)
+            print(f"Searching for: {query}")
+            asyncio.run(run_search_pipeline(query, max_results=args.max_results))
     except KeyboardInterrupt:
         print("\nSearch interrupted by user", file=sys.stderr)
         sys.exit(1)
