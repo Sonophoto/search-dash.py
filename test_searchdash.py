@@ -37,6 +37,8 @@ def _make_results(engine_name: str, count: int):
         }
         for i in range(1, count + 1)
     ]
+
+
 class FakeEngine(SearchEngine):
     """A search engine that returns canned results without network access."""
 
@@ -48,6 +50,8 @@ class FakeEngine(SearchEngine):
     async def search(self, query, session):
         self.last_query = query
         return _make_results(self.name, self.result_count)
+
+
 class FailingEngine(SearchEngine):
     """A search engine that always raises."""
 
@@ -67,12 +71,14 @@ async def test_search_single_engine_returns_results():
     assert len(results) == 3
     assert engine.last_query == SEARCH_TERM
 
+
 async def test_search_single_engine_caps_at_max():
     """Results are capped at MAX_RESULTS_PER_ENGINE (20)."""
     engine = FakeEngine("BigEngine", result_count=30)
     session = MagicMock()
     results = await search_single_engine(SEARCH_TERM, engine, session)
     assert len(results) == MAX_RESULTS_PER_ENGINE
+
 
 async def test_search_single_engine_handles_failure():
     """Engine exceptions are caught and an empty list is returned."""
@@ -92,6 +98,8 @@ def test_print_engine_results_outputs_links(capsys):
     assert "[DuckDuckGo]" in out
     assert "Result 1" in out
     assert "https://example.com/duckduckgo/3" in out
+
+
 def test_print_engine_results_no_results(capsys):
     """Empty results prints 'No results found'."""
     print_engine_results("StartPage", [])
@@ -112,6 +120,7 @@ async def test_pipeline_sequential_order(capsys):
     sp_pos = out.index("[StartPage]")
     assert ddg_pos < sp_pos, "DuckDuckGo results must appear before StartPage"
 
+
 async def test_pipeline_passes_query_to_engines():
     """The query string reaches each engine unchanged."""
     ddg = FakeEngine("DuckDuckGo")
@@ -121,6 +130,7 @@ async def test_pipeline_passes_query_to_engines():
 
     assert ddg.last_query == SEARCH_TERM
     assert sp.last_query == SEARCH_TERM
+
 
 async def test_pipeline_caps_results_per_engine(capsys):
     """Each engine's output is capped at 20 results."""
@@ -132,6 +142,7 @@ async def test_pipeline_caps_results_per_engine(capsys):
     out = capsys.readouterr().out
     # Each engine section should show exactly 20
     assert out.count("Found 20 results") == 2
+
 
 async def test_pipeline_resilient_to_one_engine_failing(capsys):
     """If one engine fails, the other still produces output."""
@@ -176,6 +187,7 @@ async def test_duckduckgo_search_parses_html():
     assert results[0]["url"] == "https://example.com/1"
     assert results[0]["snippet"] == "A great chicken recipe"
     assert results[1]["snippet"] == ""
+
 
 async def test_startpage_search_parses_html():
     """StartPageSearch.search parses result divs correctly."""
