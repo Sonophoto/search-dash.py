@@ -10,17 +10,21 @@ and `BeautifulSoup` for HTML parsing.
 
 ## Architecture
 
-- **searchdash.py** – Main module containing all search logic and CLI entry point.
+- **searchdash.py** – Single-file main module (~260 lines) containing all search
+  logic and CLI entry point.
   - `SearchEngine` – Abstract base class for search engines.
   - `DuckDuckGoSearch` / `StartPageSearch` – Concrete engine implementations that
     scrape HTML results.
-  - `search_single_engine()` – Searches one engine and caps results at the
-    user-specified max (CLI `-n` flag, default 20).
-  - `run_search_pipeline()` – Runs all engines sequentially for a given query string,
-    printing results to stdout.
+  - `search_single_engine(query, engine, session, max_results)` – Searches one
+    engine and caps results at `max_results`.
+  - `run_search_pipeline(query, engines, max_results)` – Runs all engines
+    sequentially for a given query string, printing results to stdout.
   - `main()` – CLI entry point using `argparse`.
-- **test_searchdash.py** – pytest test suite using mocks; no real network calls.
-  Uses `pytest-asyncio` with `asyncio_mode = "auto"`.
+  - `DEFAULT_MAX_RESULTS_PER_ENGINE` – Module-level constant (20) used as the
+    default for the `-n` CLI flag and as the default parameter value in
+    `search_single_engine()` and `run_search_pipeline()`.
+- **test_searchdash.py** – pytest test suite (13 tests) using mocks; no real
+  network calls. Uses `pytest-asyncio` with `asyncio_mode = "auto"`.
 - **pyproject.toml** – Project metadata, pytest config, and dev dependencies.
 
 ## CLI Arguments
@@ -30,14 +34,30 @@ and `BeautifulSoup` for HTML parsing.
 | `-s` | `search_string` | str | yes | — | Search query (use single quotes) |
 | `-n` | `max_results` | int | no | 20 | Max results per engine |
 
-## Testing
+## Quick-Start for New Sessions
 
-Run tests with: `python -m pytest test_searchdash.py -v`
+1. **Install deps:** `pip install aiohttp beautifulsoup4 pytest pytest-asyncio`
+   (uvloop is optional and Linux-only).
+2. **Run tests:** `python -m pytest test_searchdash.py -v` — expects 13 passing
+   tests as of this writing.
+3. **Verify CLI:** `python searchdash.py --help` shows usage with `-s` and `-n`.
+4. **Key exports used in tests:** `DEFAULT_MAX_RESULTS_PER_ENGINE`,
+   `DuckDuckGoSearch`, `SearchEngine`, `StartPageSearch`, `print_engine_results`,
+   `run_search_pipeline`, `search_single_engine`.
 
-All tests mock HTTP calls; no network access is needed.
+## Testing Details
+
+- Run: `python -m pytest test_searchdash.py -v`
+- All tests mock HTTP calls; no network access needed.
+- Test helpers: `FakeEngine(name, result_count)` and `FailingEngine()` provide
+  canned results and simulated failures.
+- Static search term used in tests: `"chicken"`.
+- Tests cover: result capping, custom max_results, failure resilience, sequential
+  engine ordering, HTML parsing for both engines, and output formatting.
 
 ## Conventions
 
 - Async code uses `asyncio.run()` in `main()`.
 - Optional `uvloop` is imported if available for performance.
 - Errors are printed to stderr; results to stdout.
+- The project uses a flat layout (no `src/` directory).
